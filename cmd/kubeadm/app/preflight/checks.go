@@ -46,6 +46,7 @@ import (
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmdefaults "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha1"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	"k8s.io/kubernetes/cmd/kubeadm/app/images"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	authzmodes "k8s.io/kubernetes/pkg/kubeapiserver/authorizer/modes"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
@@ -638,6 +639,27 @@ func (kubever KubeletVersionCheck) Check() (warnings, errors []error) {
 		}
 	}
 	return nil, nil
+}
+
+type PrePullCheck struct {
+	cfg *kubeadmapi.MasterConfiguration
+}
+
+func (PrePullCheck) Name() string {
+	return "PrePull"
+}
+func (ppc PrePullCheck) Check() (warnings, errors []error) {
+	execer := utilsexec.New()
+	puller, err := images.NewPuller(execer, ppc.cfg.GetCRISocket())
+	if err != nil {
+		return []error{fmt.Errorf("failed to create an image puller: %v", err)}
+	}
+	for _, image := range images.GetAllImages(ppc.cfg) {
+		err := puller.Pull(image)
+		if err != nil {
+			return []error{fmt.Errorf("errorf pulling image %q: %v", image, err)}
+		}
+	}
 }
 
 // SwapCheck warns if swap is enabled
