@@ -10,6 +10,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "checks.go",
+        "logging.go",
         "utils.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:android": [

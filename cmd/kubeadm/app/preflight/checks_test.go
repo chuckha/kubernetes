@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -271,6 +272,15 @@ func TestRunJoinNodeChecks(t *testing.T) {
 	}
 }
 
+type stderrLogger struct {
+	io.Writer
+}
+
+// Warningf implements the preflight.logger interface
+func (s *stderrLogger) Warningf(format string, args ...interface{}) {
+	s.Writer.Write([]byte(fmt.Sprintf("\t[WARNING] "+format, args...)))
+}
+
 func TestRunChecks(t *testing.T) {
 	var tokenTest = []struct {
 		p        []Checker
@@ -278,7 +288,7 @@ func TestRunChecks(t *testing.T) {
 		output   string
 	}{
 		{[]Checker{}, true, ""},
-		{[]Checker{preflightCheckTest{"warning"}}, true, "\t[WARNING preflightCheckTest]: warning\n"}, // should just print warning
+		{[]Checker{preflightCheckTest{"warning"}}, true, "\t[WARNING] preflightCheckTest: warning\n"}, // should just print warning
 		{[]Checker{preflightCheckTest{"error"}}, false, ""},
 		{[]Checker{preflightCheckTest{"test"}}, false, ""},
 		{[]Checker{DirAvailableCheck{Path: "/does/not/exist"}}, true, ""},
@@ -287,13 +297,13 @@ func TestRunChecks(t *testing.T) {
 		{[]Checker{FileContentCheck{Path: "/does/not/exist"}}, false, ""},
 		{[]Checker{FileContentCheck{Path: "/"}}, true, ""},
 		{[]Checker{FileContentCheck{Path: "/", Content: []byte("does not exist")}}, false, ""},
-		{[]Checker{InPathCheck{executable: "foobarbaz", exec: exec.New()}}, true, "\t[WARNING FileExisting-foobarbaz]: foobarbaz not found in system path\n"},
+		{[]Checker{InPathCheck{executable: "foobarbaz", exec: exec.New()}}, true, "\t[WARNING] FileExisting-foobarbaz: foobarbaz not found in system path\n"},
 		{[]Checker{InPathCheck{executable: "foobarbaz", mandatory: true, exec: exec.New()}}, false, ""},
-		{[]Checker{InPathCheck{executable: "foobar", mandatory: false, exec: exec.New(), suggestion: "install foobar"}}, true, "\t[WARNING FileExisting-foobar]: foobar not found in system path\nSuggestion: install foobar\n"},
+		{[]Checker{InPathCheck{executable: "foobar", mandatory: false, exec: exec.New(), suggestion: "install foobar"}}, true, "\t[WARNING] FileExisting-foobar: foobar not found in system path\nSuggestion: install foobar\n"},
 	}
 	for _, rt := range tokenTest {
 		buf := new(bytes.Buffer)
-		actual := RunChecks(rt.p, buf, sets.NewString())
+		actual := RunChecks(rt.p, &stderrLogger{buf}, sets.NewString())
 		if (actual == nil) != rt.expected {
 			t.Errorf(
 				"failed RunChecks:\n\texpected: %t\n\t  actual: %t",
