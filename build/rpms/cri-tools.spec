@@ -10,8 +10,8 @@ URL: https://kubernetes.io
 Binaries to interface with the container runtime.
 
 %prep
-# TODO(chuckha): update this to use %{version} when the dash is removed from the release
-tar -xzf {crictl-v1.0.0-beta.1-linux-amd64.tar.gz}
+VERSION=$(echo '%{version}' | tr '_' '-')
+tar -xzf {crictl-v${VERSION}-linux-amd64.tar.gz}
 
 %install
 install -m 755 -d %{buildroot}%{_bindir}
