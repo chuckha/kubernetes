@@ -11,7 +11,7 @@ Binaries to interface with the container runtime.
 
 %prep
 VERSION=$(echo '%{version}' | tr '_' '-')
-tar -xzf {crictl-v${VERSION}-linux-amd64.tar.gz}
+tar -xzf crictl-v${VERSION}-linux-amd64.tar.gz
 
 %install
 install -m 755 -d %{buildroot}%{_bindir}
