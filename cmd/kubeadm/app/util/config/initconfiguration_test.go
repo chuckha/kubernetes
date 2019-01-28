@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -56,6 +57,9 @@ func TestConfigFileAndDefaultsToInternalConfig(t *testing.T) {
 		name, in, out string
 		groupVersion  schema.GroupVersion
 		expectedErr   bool
+		// false means run always (default)
+		// true means skip on non linux (darwin, windows, etc)
+		skipOnNonLinux bool
 	}{
 		// These tests are reading one file, loading it using ConfigFileAndDefaultsToInternalConfig that all of kubeadm is using for unmarshal of our API types,
 		// and then marshals the internal object to the expected groupVersion
@@ -86,10 +90,11 @@ func TestConfigFileAndDefaultsToInternalConfig(t *testing.T) {
 		// These tests are reading one file that has only a subset of the fields populated, loading it using ConfigFileAndDefaultsToInternalConfig,
 		// and then marshals the internal object to the expected groupVersion
 		{ // v1beta1 -> default -> validate -> internal -> v1beta1
-			name:         "incompleteYAMLToDefaultedv1beta1",
-			in:           master_incompleteYAML,
-			out:          master_defaultedYAML,
-			groupVersion: kubeadmapiv1beta1.SchemeGroupVersion,
+			name:           "incompleteYAMLToDefaultedv1beta1",
+			in:             master_incompleteYAML,
+			out:            master_defaultedYAML,
+			groupVersion:   kubeadmapiv1beta1.SchemeGroupVersion,
+			skipOnNonLinux: true,
 		},
 		{ // v1alpha3 -> validation should fail
 			name:        "invalidYAMLShouldFail",
@@ -117,6 +122,10 @@ func TestConfigFileAndDefaultsToInternalConfig(t *testing.T) {
 			expected, err := ioutil.ReadFile(rt.out)
 			if err != nil {
 				t2.Fatalf("couldn't read test data: %v", err)
+			}
+
+			if rt.skipOnNonLinux && runtime.GOOS != "linux" {
+				return
 			}
 
 			if !bytes.Equal(expected, actual) {
